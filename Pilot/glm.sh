@@ -5,6 +5,8 @@
 #     -input /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-${run}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
 # done
 
+# models: 'TWOGAM(8.6,0.547,0.2,8.6,0.547)' or 'TENT(0, 12.222, 7)' ?
+
 3dDeconvolve -input $(/bin/ls /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-*_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz | sort -V) \
 -mask "/data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz" \
 -polort A \
@@ -16,12 +18,13 @@
 -CENSORTR 5:0..2 \
 -CENSORTR 6:0..2 \
 -ortvec /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/noise.1D noise \
--stim_times 1 /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_stimtime.1D 'TENT(0, 12.222, 7)' -stim_label 1 cue \
--stim_times 2 /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/probe_stimtime.1D 'TENT(0, 12.222, 7)' -stim_label 2 probe \
+-stim_times 1 /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_stimtime.1D 'TWOGAM(8.6,0.547,0.2,8.6,0.547)' -stim_label 1 cue \
+-stim_times 2 /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/probe_stimtime.1D 'TWOGAM(8.6,0.547,0.2,8.6,0.547)' -stim_label 2 probe \
 -iresp 1 /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_FIR.nii.gz \
 -iresp 2 /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/probe_FIR.nii.gz \
--gltsym 'SYM: +1*cue[0..4]' -glt_label 1 cue \
--gltsym 'SYM: +1*probe[0..4]' -glt_label 2 probe \
+-gltsym 'SYM: +1*cue' -glt_label 1 cue \
+-gltsym 'SYM: +1*probe' -glt_label 2 probe \
+-fout \
 -rout \
 -tout \
 -bucket /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_FIRmodel_stats.nii.gz \
@@ -63,6 +66,7 @@
 -gltsym 'SYM: +1*probe_state[0]' -glt_label 2 probe \
 -gltsym 'SYM: +1*cue_state[1]' -glt_label 3 cue_state \
 -gltsym 'SYM: +1*probe_state[1]' -glt_label 4 probe_state \
+-fout \
 -rout \
 -tout \
 -bucket /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_state_FIRmodel_stats.nii.gz \
@@ -79,7 +83,7 @@
 /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-5_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz 
 /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz" \
 -mask /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz \
--tout -rout -noFDR -Rbuck /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_state_FIRmodel_stats_REML.nii.gz
+-fout -tout -rout -noFDR -Rbuck /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_state_FIRmodel_stats_REML.nii.gz
 
 # task
 3dDeconvolve -input $(/bin/ls /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-*_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz | sort -V) \
@@ -99,6 +103,7 @@
 -gltsym 'SYM: +1*probe_task[0]' -glt_label 2 probe \
 -gltsym 'SYM: +1*cue_task[1]' -glt_label 3 cue_task \
 -gltsym 'SYM: +1*probe_task[1]' -glt_label 4 probe_task \
+-fout \
 -rout \
 -tout \
 -bucket /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_task_FIRmodel_stats.nii.gz \
@@ -115,7 +120,7 @@
 /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-5_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz 
 /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz" \
 -mask /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz \
--tout -rout -noFDR -Rbuck /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_task_FIRmodel_stats_REML.nii.gz
+-fout -tout -rout -noFDR -Rbuck /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_task_FIRmodel_stats_REML.nii.gz
 
 
 ### entropy change and entropy
@@ -136,6 +141,7 @@
 -gltsym 'SYM: +1*probe_entropy[0]' -glt_label 2 probe \
 -gltsym 'SYM: +1*cue_entropy[1]' -glt_label 3 cue_entropy \
 -gltsym 'SYM: +1*probe_entropy[1]' -glt_label 4 probe_entropy \
+-fout \
 -rout \
 -tout \
 -bucket /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_entropy_FIRmodel_stats.nii.gz \
@@ -152,7 +158,7 @@
 /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-5_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz 
 /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz" \
 -mask /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz \
--tout -rout -noFDR -Rbuck /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_entropy_FIRmodel_stats_REML.nii.gz
+-fout -tout -rout -noFDR -Rbuck /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_entropy_FIRmodel_stats_REML.nii.gz
 
 3dDeconvolve -input $(/bin/ls /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-*_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz | sort -V) \
 -mask "/data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz" \
@@ -187,7 +193,7 @@
 /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-5_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz 
 /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-preproc_bold_s.nii.gz" \
 -mask /data/backed_up/shared/Quantum_data/MRI_data/fmriprep/fmriprep/sub-JHtest/func/sub-JHtest_task-Quantum_run-6_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz \
--tout -rout -noFDR -Rbuck /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_entropy_change_FIRmodel_stats_REML.nii.gz
+-fout -tout -rout -noFDR -Rbuck /data/backed_up/shared/Quantum_data/MRI_data/3dDeconvolve/JHtest/cue_probe_entropy_change_FIRmodel_stats_REML.nii.gz
 
 ## we can check the design matrix by doing ExamineXmat -input cue_probe_entropy_change_FIRmodel_stats.xmat.1D
 

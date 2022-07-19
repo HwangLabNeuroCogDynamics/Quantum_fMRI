@@ -197,7 +197,7 @@ def MPEModel(tState, tProp, tResp):
     jd = np.ones(dim) / total   # the division of total is to normalize values into probability
     
     # to store trial by trial jd
-    all_jd = np.ones(np.array([len(tState), 2, len(pRange['lfsp'])]))
+    #all_jd = np.ones(np.array([len(tState), 2, len(pRange['lfsp'])]))
 
     #likelihood of getting correct response
     #ll = zeros(size(jd));
@@ -332,7 +332,7 @@ def MPEModel(tState, tProp, tResp):
                         
         #normalize
         jd = ll / np.sum(ll)
-        all_jd[it,:,:] = np.sum(jd, axis=(2,3,4))
+        #all_jd[it,:,:] = np.sum(jd, axis=(2,3,4))
 
         mDist={}
         mDist['lfsp'] = np.squeeze(np.sum(np.sum(np.sum(np.sum(jd, 4), 3), 2), 0))    # 4 3 2 0
@@ -340,8 +340,64 @@ def MPEModel(tState, tProp, tResp):
         mDist['ster'] = np.squeeze(np.sum(np.sum(np.sum(np.sum(jd, 4), 2), 1), 0))    # 4 2 1 0
         mDist['diff_at'] = np.squeeze(np.sum(np.sum(np.sum(np.sum(jd, 3), 2), 1), 0)) # 3 2 1 0
     
-    return all_jd, sE, tE, mDist, pRange
+    return jd, sE, tE, mDist, pRange
 
+
+#input: thetas are a list of 4 model estimates, same as in model inference
+#tState, tProp and tResp are from true trial sequences
+#modelBelief is a trial sequence of model belief, in joint distribution of [state, color]
+def ModelBeliefGenerateion(thetas, tState, tProp, tResp):
+    modelBelief = []
+    modelBelief.append(np.ones([2, 2]) / 4)
+    
+    tProp = np.log(tProp / (1 - tProp))
+
+    jd = modelBelief[-1].copy()
+    
+    for it in range(len(tState)):
+        if (it % 50) == 0:
+            print(str(it), ' trials have been simulated.')
+        
+        for i in range(2):
+            x = (jd[0, i] + jd[1, i]) / 2
+            jd[0, i] = jd[0, i] * (1 - thetas[3]) + thetas[3] * x
+            jd[1, i] = jd[1, i] * (1 - thetas[3]) + thetas[3] * x
+            
+        
+        #first color logit greater than 0 means it is dominant, less than 0
+        #means other color dominant
+        if ((tProp[it] < 0) and (tState[it] > 0)) or ((tProp[it] > 0) and (tState[it] == 0)):
+            tTask = 0
+        else:
+            tTask = 1
+
+        stateBelief = np.squeeze(np.sum(jd, 1)) 
+            
+        for i0 in range(2):
+            theta1 = np.exp(thetas[0])
+            pColor = 1 / (1 + np.exp((-1*theta1) * tProp[it]))
+                
+            jd[i0, 0] = pColor
+            jd[i0, 1] = 1 - pColor
+                
+            if i0 == 0:
+                pTask0 = pColor
+            else:
+                pTask0 = 1 - pColor
+
+                
+            if tTask == 0:
+                pP = [pTask0 * (1 - thetas[1]), pTask0 * thetas[1], (1 - pTask0)]
+            else:
+                pP = [(1 - pTask0) * (1 - thetas[2]), (1 - pTask0) * thetas[2], pTask0]
+                        
+            #posterior, jd now is prior
+            jd[i0, :] = jd[i0, :] * pP[int(tResp[it])]
+
+                        
+        jd = jd / np.sum(jd)
+        modelBelief.append(jd)
+    return modelBelief 
 
 ################################################
 ###### create noise regressors, I know Evan wrote a function but I'm too lazy to figure out how to use it
@@ -386,35 +442,40 @@ tState, tTask, tProp, tResp = extract_model_inputs(df)
 
 ## fit model
 all_jd, sE, tE, mDist, pRange = MPEModel(tState, tProp, tResp)
+j_thetas = np.sum(all_jd, axis=0) 
 
-#all_jd is now the joint dist of theta0 and 1. We can use it to calculate the entropy of this distribution
-# still don't quite understand how theta0 works, so sum?
-t_theta1 = np.sum(all_jd, axis=1) # this is now the trial by trial theta1 distribution
+pRange = {'lfsp':np.linspace(-5, 5, 201, endpoint=True), 'fter':np.linspace(0, 0.5, 51, endpoint=True), 'ster':np.linspace(0, 0.5, 51, endpoint=True), 'diff_at':np.linspace(0, 0.5, 51, endpoint=True)}
+j_theta = [pRange['lfsp'][np.argmax(np.sum(j_thetas,axis=(1,2,3,)))], pRange['fter'][np.argmax(np.sum(j_thetas,axis=(0,2,3)))], pRange['ster'][np.argmax(np.sum(j_thetas,axis=(0,1,3,)))], pRange['diff_at'][np.argmax(np.sum(j_thetas,axis=(0,1,2,)))]]
 
-from scipy.stats import entropy #this looks right https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.entropy.html
-t_entropy = [] #entorpy of dist
-t_entropy_change = [0.0] #signed change of entropy from previous trial
-for t in range(len(tE)):
-	t_entropy.append(entropy(t_theta1[t,:]))
+beliefs = ModelBeliefGenerateion(j_theta, tState, tProp, tResp)
+
+s_t_entropy = [] #entorpy of dist
+s_t_entropy_change = [0.0] #signed change of entropy from previous trial
+for t in range(len(sE)):
+	s_t_entropy.append(entropy(beliefs[t].flatten()))
 	if t>0:
-		t_entropy_change.append(entropy(t_theta1[t,:])-entropy(t_theta1[t-1,:]))
-t_entropy = np.array(t_entropy)
-t_entropy_change = np.array(t_entropy_change)
+		s_t_entropy_change.append(entropy(beliefs[t].flatten())-entropy(beliefs[t-1].flatten()))
+s_t_entropy = np.array(s_t_entropy)
+s_t_entropy_change = np.array(s_t_entropy_change)
 
-
+td_SE =[0.0]
+for t in range(len(sE)):
+  if t >0:
+    td_SE.append(abs(sE[t]-0.5) - abs(sE[t-1]-0.5))
+td_SE = np.array(td_SE)
 ## plot
-plt.plot(1-np.array(sE), 'blue', t_entropy_change, 'orange', tState, 'black')
-plt.plot(np.array(tE), 'green', t_entropy_change, 'orange',)
+plt.plot(np.array(td_SE), 'blue', s_t_entropy, 'orange', tState, 'black')
+#plt.plot(np.array(tE), 'green', t_entropy_change, 'orange',)
 
-plt.plot(np.array(sE), 'blue', tState, 'black',)
+#plt.plot(np.array(sE), 'blue', tState, 'black',)
 
-pRange_keys = ['lfsp', 'fter', 'ster', 'diff_at']
-temp_SE = 1-np.array(sE)
-plt.plot(tState, 'blue', temp_SE, 'orange')
-plt.show()
+# pRange_keys = ['lfsp', 'fter', 'ster', 'diff_at']
+# temp_SE = 1-np.array(sE)
+# plt.plot(tState, 'blue', temp_SE, 'orange')
+# plt.show()
 
-plt.plot(tTask, 'blue', tE, 'orange')
-plt.show()
+# plt.plot(tTask, 'blue', tE, 'orange')
+# plt.show()
 
 
 ############################################################
@@ -554,18 +615,34 @@ s_tState = np.load("sub-10218_model_inputs/sub-10218_tState.npy")
 s_tTask = np.load("sub-10218_model_inputs/sub-10218_tTask.npy")
 s_tProp = np.load("sub-10218_model_inputs/sub-10218_tProp.npy")
 s_tResp = np.load("sub-10218_model_inputs/sub-10218_tResp.npy")
-s_all_jd, s_sE, s_tE, s_mDist, s_pRange = MPEModel(s_tState, s_tProp, s_tResp)
+s_jd, s_sE, s_tE, s_mDist, s_pRange = MPEModel(s_tState, s_tProp, s_tResp)
+s_jd = np.sum(s_jd, axis=0)
 
-s_t_theta1 = np.sum(sim_all_jd, axis=1) # this is now the trial by trial theta1 distribution
+pRange = {'lfsp':np.linspace(-5, 5, 201, endpoint=True), 'fter':np.linspace(0, 0.5, 51, endpoint=True), 'ster':np.linspace(0, 0.5, 51, endpoint=True), 'diff_at':np.linspace(0, 0.5, 51, endpoint=True)}
+s_theta = [pRange['lfsp'][np.argmax(np.sum(s_jd,axis=(1,2,3,)))], pRange['fter'][np.argmax(np.sum(s_jd,axis=(0,2,3)))], pRange['ster'][np.argmax(np.sum(s_jd,axis=(0,1,3,)))], pRange['diff_at'][np.argmax(np.sum(s_jd,axis=(0,1,2,)))]]
+
+beliefs = ModelBeliefGenerateion(s_theta, s_tState, s_tProp, s_tResp)
+
 s_t_entropy = [] #entorpy of dist
 s_t_entropy_change = [0.0] #signed change of entropy from previous trial
 for t in range(len(s_tE)):
-	s_t_entropy.append(entropy(s_t_theta1[t,:]))
+	s_t_entropy.append(entropy(beliefs[t].flatten()))
 	if t>0:
-		s_t_entropy_change.append(entropy(s_t_theta1[t,:])-entropy(s_t_theta1[t-1,:]))
+		s_t_entropy_change.append(entropy(beliefs[t].flatten())-entropy(beliefs[t-1].flatten()))
 s_t_entropy = np.array(s_t_entropy)
 s_t_entropy_change = np.array(s_t_entropy_change)
-plt.plot(1-np.array(s_sE), 'blue', s_t_entropy_change, 'orange', s_tState, 'black')
+
+
+td_SE =[0.0]
+for t in range(len(sE)):
+  if t >0:
+    td_SE.append(abs(sE[t]-0.5) - abs(sE[t-1]-0.5))
+td_SE = np.array(td_SE)
+## plot
+plt.plot(1-np.array(sE), 'gray', np.array(td_SE), 'blue', s_t_entropy, 'orange', tState, 'black')
+
+
+plt.plot(1-np.array(s_sE), 'blue', s_t_entropy, 'orange', s_tState, 'black')
 
 
 #end
